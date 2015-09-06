@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<uexplugins>
+    <plugin name="uexScanner">
+        <method name="open"></method>
+        <method name="setJsonData"></method>
+	</plugin>
+</uexplugins>
+
+
