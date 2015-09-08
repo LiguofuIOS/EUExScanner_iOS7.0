@@ -64,9 +64,9 @@
 
 @property (nonatomic, strong) NSMutableArray *scanner_CodeArr;
 
-@property (strong,nonatomic)AVCaptureMetadataOutput * output;
+@property (strong,nonatomic) AVCaptureMetadataOutput * output;
 
-@property (strong,nonatomic)AVCaptureVideoPreviewLayer *preview;
+@property (strong,nonatomic) AVCaptureVideoPreviewLayer *preview;
 
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *player;
 

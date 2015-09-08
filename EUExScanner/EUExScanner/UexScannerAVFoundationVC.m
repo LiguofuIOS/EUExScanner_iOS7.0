@@ -11,10 +11,11 @@
 
 #define SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
 #define SCREEN_HEIGHT  ([UIScreen mainScreen].bounds.size.height)
+#define IS_NSMutableArray(x) ([x isKindOfClass:[NSMutableArray class]] && [x count]>0)
 #define TOOLBARH 60
 #define TOOLBARBOTTOMH 60
-#define READVIEWH 240
-#define READVIEWW 240
+#define READVIEWH 200
+#define READVIEWW 200
 
 
 @interface UexScannerAVFoundationVC ()
@@ -134,33 +135,33 @@
         return;
     }
     
-        CGSize size = self.view.bounds.size;
-        CGRect cropRect = CGRectMake(SCREEN_WIDTH/2-READVIEWW/2, SCREEN_HEIGHT/2-60-READVIEWH/2, READVIEWW, READVIEWH);
-        CGFloat p1 = size.height/size.width;
-        CGFloat p2 = 1920./1080.; //使用了1080p的图像输出
-        if (p1 < p2) {
-            CGFloat fixHeight = self.view.bounds.size.width * 1920. / 1080.;
-            CGFloat fixPadding = (fixHeight - size.height)/2;
-            _output.rectOfInterest = CGRectMake((cropRect.origin.y + fixPadding)/fixHeight,
-                                                cropRect.origin.x/size.width,
-                                                cropRect.size.height/fixHeight,
-                                                cropRect.size.width/size.width);
-        } else {
-            CGFloat fixWidth = self.view.bounds.size.height * 1080. / 1920.;
-            CGFloat fixPadding = (fixWidth - size.width)/2;
-            _output.rectOfInterest = CGRectMake(cropRect.origin.y/size.height,
-                                                (cropRect.origin.x + fixPadding)/fixWidth,
-                                                cropRect.size.height/size.height,
-                                                cropRect.size.width/fixWidth);
-    
-        }
-    
+//        CGSize size = self.view.bounds.size;
+//        CGRect cropRect = CGRectMake(SCREEN_WIDTH/2-READVIEWW/2, SCREEN_HEIGHT/2-60-READVIEWH/2, READVIEWW, READVIEWH);
+//        CGFloat p1 = size.height/size.width;
+//        CGFloat p2 = 1920./1080.; //使用了1080p的图像输出
+//        if (p1 < p2) {
+//            CGFloat fixHeight = self.view.bounds.size.width * 1920. / 1080.;
+//            CGFloat fixPadding = (fixHeight - size.height)/2;
+//            _output.rectOfInterest = CGRectMake((cropRect.origin.y + fixPadding)/fixHeight,
+//                                                cropRect.origin.x/size.width,
+//                                                cropRect.size.height/fixHeight,
+//                                                cropRect.size.width/size.width);
+//        } else {
+//            CGFloat fixWidth = self.view.bounds.size.height * 1080. / 1920.;
+//            CGFloat fixPadding = (fixWidth - size.width)/2;
+//            _output.rectOfInterest = CGRectMake(cropRect.origin.y/size.height,
+//                                                (cropRect.origin.x + fixPadding)/fixWidth,
+//                                                cropRect.size.height/size.height,
+//                                                cropRect.size.width/fixWidth);
+//    
+//        }
+     _output.rectOfInterest = CGRectMake(0.2f, 0.2f, 0.8f, 0.8f);
     // 条码类型 AVMetadatatainObjectTypeQRCode
-    //_output.metadataObjectTypes =@[AVMetadataObjectTypeQRCode];
+    _output.metadataObjectTypes =@[AVMetadataObjectTypeQRCode,AVMetadataObjectTypeCode128Code];
     
     //   self.output.metadataObjectTypes =@[AVMetadataObjectTypeCode128Code,AVMetadataObjectTypeUPCECode,AVMetadataObjectTypeEAN13Code,AVMetadataObjectTypeEAN8Code,AVMetadataObjectTypeCode93Code,AVMetadataObjectTypeQRCode,AVMetadataObjectTypeAztecCode,AVMetadataObjectTypeInterleaved2of5Code,AVMetadataObjectTypeITF14Code,AVMetadataObjectTypeDataMatrixCode] ;
     
-    _output.metadataObjectTypes = _output.availableMetadataObjectTypes;
+   // _output.metadataObjectTypes = _output.availableMetadataObjectTypes;
     // Preview
     _preview =[AVCaptureVideoPreviewLayer layerWithSession:self.session];
     _preview.videoGravity = AVLayerVideoGravityResizeAspectFill;
@@ -241,10 +242,10 @@
     
     UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(SCREEN_WIDTH/2-READVIEWH/2, SCREEN_HEIGHT/2+READVIEWH/2-TOOLBARH+20, READVIEWW, 40)];
     
-    label.text = self.scannerTip?self.scannerTip: @"对准二维码/条形码,即可自动扫描";
+    label.text = self.scannerTip?self.scannerTip: @"对准二维码,即可扫描";
     label.textColor = [UIColor whiteColor];
     label.textAlignment = 1;
-    [label sizeToFit];
+   // [label sizeToFit];
     [label setBackgroundColor:[UIColor clearColor]];
     
     [self addAnimations];
@@ -355,7 +356,8 @@
     if (_session.isRunning) {
         
         [_session stopRunning];
-        
+        _session = nil;
+        [_player removeFromSuperlayer];
     } else {
         
         //
@@ -413,52 +415,78 @@
 
 - (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection {
     
-    [self cancelBtnClick];
-    _line = [[UIImageView alloc] initWithFrame:CGRectMake(10, 10, READVIEWW-20, 2)];
-    num = 0;
-    upOrdown = NO;
-    NSString *stringValue;
-    NSString *resultType;
+    NSLog(@"appcan-->EUExScanner-->UexSCannerAVFoundationVC.m-->captureOutput");
+    
+    //    _line = [[UIImageView alloc] initWithFrame:CGRectMake(10, 10, READVIEWW-20, 2)];
+    //    num = 0;
+    //    upOrdown = NO;
+    NSString *resultCodeString = nil;
+    NSString *resultType = nil;
     NSString *subString = @"org.iso.";
     
-    if ([metadataObjects count] >0)
-    {
+    if (metadataObjects != nil && [metadataObjects count] > 0) {
+        
         AVMetadataMachineReadableCodeObject * metadataObject = [metadataObjects objectAtIndex:0];
-        stringValue = metadataObject.stringValue;
-        resultType = metadataObject.type;
+        
+        if (metadataObject) {
+            
+            if ([[metadataObject type] isEqualToString:AVMetadataObjectTypeQRCode]||[[metadataObject type] isEqualToString:AVMetadataObjectTypeCode128Code]) {
+                
+                resultType = [NSString stringWithFormat:@"%@", metadataObject.type];
+                
+                resultCodeString = [NSString stringWithFormat:@"%@", [metadataObject stringValue]];
+            }
+            
+        }
         
         NSRange range = [resultType rangeOfString:subString];
-
+        
         if (range.location != NSNotFound) {
             
             resultType = [resultType substringFromIndex:range.length];
         }
-       
+        
     }
     
-    if (stringValue) {
+    NSMutableDictionary *resultDict = [NSMutableDictionary dictionaryWithCapacity:5];
+    
+    if (resultCodeString) {
         
-        NSString * resultCode = [EUtility transferredString:[stringValue dataUsingEncoding:NSUTF8StringEncoding]];
+        NSString * resultCode = [EUtility transferredString:[resultCodeString dataUsingEncoding:NSUTF8StringEncoding]];
         
-        NSLog(@"appcan--ACPuexJHHCViewController--readerView==>didOutputSampleBuffer==>result== %@",resultCode);
-        NSMutableDictionary *resultDict = [NSMutableDictionary dictionaryWithCapacity:5];
-        if (resultCode) {
-            [resultDict setObject:resultCode forKey:UEX_JKCODE];
-        }else {
-            [resultDict setObject:@"" forKey:UEX_JKCODE];
-        }
-        if (resultType) {
-            [resultDict setObject:resultType forKey:UEX_JKTYPE];
-        }else {
-            [resultDict setObject:@"" forKey:UEX_JKTYPE];
-        }
-        NSString *retJson = [resultDict JSONFragment];
-        [euexObj uexScannerWithOpId:0 dataType:UEX_CALLBACK_DATATYPE_JSON data:retJson];
+        [resultDict setObject:resultCode forKey:UEX_JKCODE];
         
     } else {
-        //NSLog(@"appcan--ACPuexJHHCViewController--readerView==>didOutputSampleBuffer==>result==nil");
+        
+        [resultDict setObject:@"" forKey:UEX_JKCODE];
+        
     }
     
+    if (resultType) {
+        
+        [resultDict setObject:resultType forKey:UEX_JKTYPE];
+        
+    }else {
+        
+        [resultDict setObject:@"" forKey:UEX_JKTYPE];
+        
+    }
+    
+    NSString *retJson = [resultDict JSONFragment];
+    NSLog(@"appcan--ACPuexJHHCViewController--readerView==>didOutputSampleBuffer==>result== %@",retJson);
+    
+    //[euexObj uexScannerWithOpId:0 dataType:UEX_CALLBACK_DATATYPE_JSON data:retJson];
+    
+    [self performSelectorOnMainThread:@selector(reportScanResult:) withObject:retJson waitUntilDone:NO];
+    
+}
+
+- (void)reportScanResult:(NSString *)retJson {
+    
+    [self cancelBtnClick];
+
+    [euexObj uexScannerWithOpId:0 dataType:UEX_CALLBACK_DATATYPE_JSON data:retJson];
+
 }
 
 -(void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary *)info {
